@@ -1,0 +1,63 @@
+/*
+Theme Name: SmokeIran Theme
+Description: Right-to-left (RTL) language support styles
+*/
+
+body {
+    direction: rtl;
+    text-align: right;
+}
+
+.site-branding {
+    margin-left: auto;
+    margin-right: 0;
+}
+
+.nav-menu {
+    margin-left: 0;
+    margin-right: auto;
+}
+
+.nav-menu li {
+    float: right;
+}
+
+.post-thumbnail {
+    float: right;
+    margin-left: 1rem;
+    margin-right: 0;
+}
+
+.sidebar {
+    float: left;
+}
+
+.entry-meta span {
+    margin-left: 1rem;
+    margin-right: 0;
+}
+
+.comment-author .avatar {
+    float: right;
+    margin-left: 1rem;
+    margin-right: 0;
+}
+
+.children {
+    padding-left: 0;
+    padding-right: 2rem;
+}
+
+.nav-previous {
+    float: right;
+}
+
+.nav-next {
+    float: left;
+}
+
+.read-more:after {
+    content: '\2190';
+    margin-right: 0.5rem;
+    margin-left: 0;
+}
