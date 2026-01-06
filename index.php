@@ -54,11 +54,8 @@ get_header();
                                     </span>
                                     <span class="byline">
                                         <?php
-                                        /* translators: %s: post author */
-                                        printf(
-                                            esc_html__( 'by %s', 'smokeiranTheme' ),
-                                            '<a href="' . esc_url( get_author_posts_url( get_the_author_meta( 'ID' ) ) ) . '">' . esc_html( get_the_author() ) . '</a>'
-                                        );
+                                        esc_html_e( 'by', 'smokeiranTheme' );
+                                        echo ' <a href="' . esc_url( get_author_posts_url( get_the_author_meta( 'ID' ) ) ) . '">' . esc_html( get_the_author() ) . '</a>';
                                         ?>
                                     </span>
                                 </div>
