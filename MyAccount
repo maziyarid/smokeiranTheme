@@ -1,0 +1,41 @@
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+add_action( 'template_redirect', function () {
+    if ( ! is_account_page() ) return;
+
+    add_filter( 'the_content', function ( $content ) {
+        if ( ! is_main_query() || ! in_the_loop() ) return $content;
+
+        ob_start();
+        ?>
+        <div class="si-container si-section si-grid si-gap-6" style="grid-template-columns: 280px 1fr;">
+            <aside class="si-card">
+                <div class="si-card-header">
+                    <h2 class="si-text-lg">حساب کاربری من</h2>
+                </div>
+                <div class="si-card-body">
+                    <?php
+                    // Woo account navigation
+                    if ( function_exists( 'woocommerce_account_navigation' ) ) {
+                        woocommerce_account_navigation();
+                    }
+                    ?>
+                </div>
+            </aside>
+
+            <main class="si-card">
+                <div class="si-card-body">
+                    <?php
+                    if ( function_exists( 'woocommerce_account_content' ) ) {
+                        woocommerce_account_content();
+                    } else {
+                        echo $content;
+                    }
+                    ?>
+                </div>
+            </main>
+        </div>
+        <?php
+        return ob_get_clean();
+    }, 999 );
+});
