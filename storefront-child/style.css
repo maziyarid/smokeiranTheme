@@ -1,0 +1,773 @@
+/*!
+Theme Name:   Smoke Iran
+Theme URI:    https://smokeiran.com/
+Author:       Smoke Iran Team
+Author URI:   https://smokeiran.com/
+Description:  Premium e-commerce theme for Smoke Iran - Modern, elegant design for showcasing products with advanced WooCommerce integration.
+Version:      1.0.0
+Template:     storefront
+License:      GNU General Public License v3 or later
+License URI:  https://www.gnu.org/licenses/gpl-3.0.html
+Text Domain:  smoke-iran
+Domain Path:  /languages
+Tags:         e-commerce, two-columns, custom-background, custom-colors, custom-header, custom-menu, featured-images, full-width-template, woocommerce, mega-menu
+*/
+
+/* ==========================================================================
+   CSS VARIABLES & ROOT STYLES
+   ========================================================================== */
+:root {
+    /* Brand Colors */
+    --smoke-primary: #29853A;
+    --smoke-secondary: #c9302c;
+    --smoke-accent: #f0ad4e;
+    --smoke-dark: #1a1a1a;
+    --smoke-light: #f8f9fa;
+    --smoke-gray: #6c757d;
+    --smoke-border: #e0e0e0;
+    
+    /* Typography */
+    --smoke-font-primary: 'Irancell', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --smoke-font-heading: 'Irancell', 'Inter', sans-serif;
+    
+    /* Spacing */
+    --smoke-spacing-xs: 5px;
+    --smoke-spacing-sm: 10px;
+    --smoke-spacing-md: 20px;
+    --smoke-spacing-lg: 40px;
+    --smoke-spacing-xl: 60px;
+    
+    /* Border Radius */
+    --smoke-radius-sm: 4px;
+    --smoke-radius-md: 8px;
+    --smoke-radius-lg: 12px;
+    --smoke-radius-xl: 20px;
+    --smoke-radius-full: 50px;
+    
+    /* Shadows */
+    --smoke-shadow-sm: 0 2px 8px rgba(0,0,0,0.08);
+    --smoke-shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+    --smoke-shadow-lg: 0 10px 30px rgba(0,0,0,0.15);
+    
+    /* Transitions */
+    --smoke-transition: all 0.3s ease;
+}
+
+/* ==========================================================================
+   BASE & RESET
+   ========================================================================== */
+html {
+    margin: 0 !important;
+    padding: 0 !important;
+    height: 100%;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+body {
+    font-family: var(--smoke-font-primary);
+    color: var(--smoke-dark);
+    line-height: 1.7;
+    font-size: 16px;
+    direction: rtl;
+    text-align: right;
+    margin: 0 !important;
+    padding: 0 !important;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+body.storefront {
+    margin-bottom: 0 !important;
+}
+
+/* ==========================================================================
+   TYPOGRAPHY
+   ========================================================================== */
+h1, h2, h3, h4, h5, h6 {
+    font-family: var(--smoke-font-heading);
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--smoke-dark);
+}
+
+h1 { font-size: 2.5rem; }
+h2 { font-size: 2rem; }
+h3 { font-size: 1.75rem; }
+h4 { font-size: 1.5rem; }
+h5 { font-size: 1.25rem; }
+h6 { font-size: 1rem; }
+
+a {
+    color: var(--smoke-primary);
+    text-decoration: none;
+    transition: var(--smoke-transition);
+}
+
+a:hover {
+    color: var(--smoke-secondary);
+}
+
+/* ==========================================================================
+   LAYOUT & CONTAINERS
+   ========================================================================== */
+.col-full,
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.col-full {
+    margin-bottom: 0 !important;
+}
+
+.site {
+    background: #fff;
+}
+
+.site,
+#page {
+    margin-bottom: 0 !important;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.site > *:last-child,
+#page > *:last-child {
+    margin-bottom: 0 !important;
+}
+
+.site-header,
+.site-footer {
+    margin: 0;
+}
+
+/* Main content flex grow */
+.site-content,
+#content {
+    flex: 1 0 auto;
+}
+
+.site-content > *:last-child,
+.content-area > *:last-child,
+main > *:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* Full Width Sections */
+.smoke-features,
+.smoke-footer,
+.smoke-topbar,
+.smoke-header,
+.smoke-nav {
+    width: 100%;
+    max-width: 100%;
+}
+
+/* ==========================================================================
+   BUTTONS
+   ========================================================================== */
+.button,
+button,
+input[type="submit"],
+input[type="button"],
+.woocommerce a.button,
+.woocommerce button.button {
+    background: var(--smoke-primary);
+    color: #fff;
+    padding: 12px 30px;
+    border: none;
+    border-radius: var(--smoke-radius-full);
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--smoke-transition);
+    display: inline-block;
+    text-decoration: none;
+    font-size: 15px;
+}
+
+.button:hover,
+button:hover,
+input[type="submit"]:hover,
+.woocommerce a.button:hover,
+.woocommerce button.button:hover {
+    background: var(--smoke-secondary);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: var(--smoke-shadow-md);
+}
+
+.button.outline,
+.button-outline {
+    background: transparent;
+    border: 2px solid var(--smoke-primary);
+    color: var(--smoke-primary);
+}
+
+.button.outline:hover {
+    background: var(--smoke-primary);
+    color: #fff;
+}
+
+/* ==========================================================================
+   FORMS
+   ========================================================================== */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+input[type="number"],
+textarea,
+select {
+    width: 100%;
+    padding: 12px 20px;
+    border: 2px solid var(--smoke-border);
+    border-radius: var(--smoke-radius-md);
+    font-size: 15px;
+    transition: var(--smoke-transition);
+    font-family: var(--smoke-font-primary);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: var(--smoke-primary);
+    box-shadow: 0 0 0 3px rgba(41, 133, 58, 0.1);
+}
+
+/* ==========================================================================
+   CUSTOM SCROLLBAR
+   ========================================================================== */
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--smoke-light);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--smoke-gray);
+    border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--smoke-primary);
+}
+
+/* ==========================================================================
+   WOOCOMMERCE - PRODUCT GRID
+   ========================================================================== */
+.woocommerce ul.products {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 30px;
+}
+
+.woocommerce ul.products li.product {
+    background: #fff;
+    border: 1px solid var(--smoke-border);
+    border-radius: var(--smoke-radius-lg);
+    padding: 20px;
+    transition: var(--smoke-transition);
+    position: relative;
+}
+
+.woocommerce ul.products li.product:hover {
+    box-shadow: var(--smoke-shadow-lg);
+    transform: translateY(-5px);
+}
+
+.woocommerce ul.products li.product img {
+    border-radius: var(--smoke-radius-md);
+    margin-bottom: 15px;
+}
+
+.woocommerce ul.products li.product .price {
+    color: var(--smoke-primary);
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.woocommerce span.onsale {
+    background: var(--smoke-secondary);
+    color: #fff;
+    padding: 5px 15px;
+    border-radius: var(--smoke-radius-full);
+    font-weight: 700;
+    font-size: 13px;
+}
+
+/* ==========================================================================
+   WOOCOMMERCE - SINGLE PRODUCT
+   ========================================================================== */
+.single-product .product {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 50px;
+    margin-top: 30px;
+}
+
+.single-product .woocommerce-product-gallery {
+    position: sticky;
+    top: 100px;
+}
+
+/* ==========================================================================
+   WOOCOMMERCE - CART
+   ========================================================================== */
+.woocommerce-cart table.cart {
+    border: 1px solid var(--smoke-border);
+    border-radius: var(--smoke-radius-lg);
+}
+
+.woocommerce-cart table.cart th,
+.woocommerce-cart table.cart td {
+    padding: 20px;
+    border-bottom: 1px solid var(--smoke-border);
+}
+
+/* WooCommerce page content fix */
+.woocommerce-page .site-content,
+.woocommerce .site-content {
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+/* ==========================================================================
+   WOOCOMMERCE - CHECKOUT
+   ========================================================================== */
+.woocommerce-checkout #payment {
+    background: var(--smoke-light);
+    padding: 30px;
+    border-radius: var(--smoke-radius-lg);
+}
+
+/* ==========================================================================
+   BLOG & POSTS
+   ========================================================================== */
+.blog article,
+.archive article {
+    background: #fff;
+    border: 1px solid var(--smoke-border);
+    border-radius: var(--smoke-radius-lg);
+    padding: 30px;
+    margin-bottom: 30px;
+    transition: var(--smoke-transition);
+}
+
+.blog article:hover,
+.archive article:hover {
+    box-shadow: var(--smoke-shadow-md);
+    transform: translateY(-3px);
+}
+
+.entry-header {
+    margin-bottom: 20px;
+}
+
+.entry-title {
+    font-size: 2rem;
+    margin-bottom: 15px;
+}
+
+.entry-meta {
+    display: flex;
+    gap: 20px;
+    color: var(--smoke-gray);
+    font-size: 14px;
+}
+
+.entry-content {
+    line-height: 1.8;
+}
+
+.entry-content img {
+    border-radius: var(--smoke-radius-md);
+    max-width: 100%;
+    height: auto;
+}
+
+/* ==========================================================================
+   PAGINATION
+   ========================================================================== */
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin: 40px 0;
+}
+
+.pagination .page-numbers {
+    display: flex;
+    gap: 10px;
+    list-style: none;
+    padding: 0;
+}
+
+.pagination .page-numbers a,
+.pagination .page-numbers span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 45px;
+    height: 45px;
+    border: 2px solid var(--smoke-border);
+    border-radius: var(--smoke-radius-md);
+    font-weight: 600;
+    transition: var(--smoke-transition);
+}
+
+.pagination .page-numbers a:hover,
+.pagination .page-numbers .current {
+    background: var(--smoke-primary);
+    border-color: var(--smoke-primary);
+    color: #fff;
+}
+
+/* ==========================================================================
+   BREADCRUMBS
+   ========================================================================== */
+.breadcrumbs {
+    padding: 15px 0;
+    font-size: 14px;
+}
+
+.breadcrumbs ol {
+    display: flex;
+    gap: 10px;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex-wrap: wrap;
+}
+
+.breadcrumbs li::after {
+    content: '/';
+    margin: 0 8px;
+    color: var(--smoke-gray);
+}
+
+.breadcrumbs li:last-child::after {
+    display: none;
+}
+
+.breadcrumbs a {
+    color: var(--smoke-gray);
+}
+
+.breadcrumbs a:hover {
+    color: var(--smoke-primary);
+}
+
+/* ==========================================================================
+   WIDGETS
+   ========================================================================== */
+.widget {
+    background: #fff;
+    padding: 25px;
+    border: 1px solid var(--smoke-border);
+    border-radius: var(--smoke-radius-lg);
+    margin-bottom: 30px;
+}
+
+.widget-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--smoke-primary);
+}
+
+.widget ul {
+    list-style: none;
+    padding: 0;
+}
+
+.widget ul li {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--smoke-border);
+}
+
+.widget ul li:last-child {
+    border-bottom: none;
+}
+
+.widget ul li a {
+    color: var(--smoke-dark);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.widget ul li a:hover {
+    color: var(--smoke-primary);
+    padding-right: 10px;
+}
+
+/* ==========================================================================
+   FOOTER - FULL WIDTH FIX
+   ========================================================================== */
+.site-footer {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    flex-shrink: 0;
+}
+
+.site-footer .col-full {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.site-footer > div {
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+/* Footer sections */
+.sif-features,
+.sif-newsletter,
+.sif-footer,
+.sif-bottom {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+/* Footer inner containers */
+.sif-features-inner,
+.sif-newsletter-inner,
+.sif-footer-inner,
+.sif-bottom-inner {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding-left: 30px !important;
+    padding-right: 30px !important;
+    box-sizing: border-box !important;
+    margin-bottom: 0 !important;
+}
+
+/* Footer sections stick together */
+.sif-features + .sif-newsletter,
+.sif-newsletter + .sif-footer,
+.sif-footer .sif-bottom {
+    margin-top: 0 !important;
+}
+
+/* Footer grid layouts */
+.sif-features-inner,
+.sif-footer-grid {
+    box-sizing: border-box !important;
+}
+
+.sif-features-inner > *,
+.sif-footer-grid > * {
+    box-sizing: border-box !important;
+}
+
+/* Fix container constraints within footer */
+.sif-footer .container,
+.sif-footer .col-full,
+.sif-newsletter .container,
+.sif-newsletter .col-full,
+.sif-features .container,
+.sif-features .col-full {
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0 !important;
+}
+
+/* Footer bottom */
+.sif-bottom {
+    position: relative;
+    z-index: 1;
+}
+
+/* Remove pseudo-elements */
+footer::after,
+.sif-footer::after,
+.sif-bottom::after {
+    display: none !important;
+}
+
+/* Storefront default spacing removal */
+.storefront-footer-widgets,
+.site-info {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Page builder fixes */
+.elementor-location-footer,
+.vc_row.wpb_row.vc_row-fluid:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* ==========================================================================
+   UTILITY CLASSES
+   ========================================================================== */
+.text-center { text-align: center; }
+.text-left { text-align: left; }
+.text-right { text-align: right; }
+
+.mt-0 { margin-top: 0 !important; }
+.mt-1 { margin-top: 10px !important; }
+.mt-2 { margin-top: 20px !important; }
+.mt-3 { margin-top: 30px !important; }
+
+.mb-0 { margin-bottom: 0 !important; }
+.mb-1 { margin-bottom: 10px !important; }
+.mb-2 { margin-bottom: 20px !important; }
+.mb-3 { margin-bottom: 30px !important; }
+
+.d-none { display: none !important; }
+.d-block { display: block !important; }
+.d-flex { display: flex !important; }
+
+/* ==========================================================================
+   RESPONSIVE - 1200px
+   ========================================================================== */
+@media (max-width: 1200px) {
+    :root {
+        font-size: 15px;
+    }
+    
+    .woocommerce ul.products {
+        grid-template-columns: repeat(3, 1fr);
+    }
+    
+    .sif-features-inner,
+    .sif-newsletter-inner,
+    .sif-footer-inner,
+    .sif-bottom-inner {
+        padding-left: 25px !important;
+        padding-right: 25px !important;
+    }
+}
+
+/* ==========================================================================
+   RESPONSIVE - 1024px
+   ========================================================================== */
+@media (max-width: 1024px) {
+    .single-product .product {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+    
+    .single-product .woocommerce-product-gallery {
+        position: relative;
+        top: auto;
+    }
+}
+
+/* ==========================================================================
+   RESPONSIVE - 991px
+   ========================================================================== */
+@media (max-width: 991px) {
+    .sif-features-inner,
+    .sif-newsletter-inner,
+    .sif-footer-inner,
+    .sif-bottom-inner {
+        padding-left: 20px !important;
+        padding-right: 20px !important;
+    }
+}
+
+/* ==========================================================================
+   RESPONSIVE - 768px
+   ========================================================================== */
+@media (max-width: 768px) {
+    :root {
+        font-size: 14px;
+    }
+    
+    h1 { font-size: 2rem; }
+    h2 { font-size: 1.75rem; }
+    h3 { font-size: 1.5rem; }
+    
+    .woocommerce ul.products {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+    }
+    
+    .col-full,
+    .container {
+        padding: 0 15px;
+    }
+    
+    body {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .site,
+    #page {
+        margin-bottom: 0 !important;
+        padding-bottom: 0 !important;
+    }
+    
+    .sif-features-inner,
+    .sif-newsletter-inner,
+    .sif-footer-inner,
+    .sif-bottom-inner {
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+}
+
+/* ==========================================================================
+   RESPONSIVE - 480px
+   ========================================================================== */
+@media (max-width: 480px) {
+    .woocommerce ul.products {
+        grid-template-columns: 1fr;
+    }
+    
+    .button,
+    .woocommerce a.button {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+}
+
+/* ==========================================================================
+   PRINT STYLES
+   ========================================================================== */
+@media print {
+    .smoke-topbar,
+    .smoke-header,
+    .smoke-nav,
+    .smoke-footer,
+    .smoke-back-to-top,
+    .smoke-mobile-menu,
+    .widget,
+    .breadcrumbs {
+        display: none !important;
+    }
+    
+    body {
+        font-size: 12pt;
+        line-height: 1.5;
+    }
+    
+    a {
+        text-decoration: underline;
+    }
+}
