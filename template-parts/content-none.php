@@ -1,3 +1,4 @@
+<?php
 /**
  * Template part for displaying a message when no content is found
  *

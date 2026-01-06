@@ -1,3 +1,4 @@
+<?php
 /**
  * Template part for displaying search results
  *

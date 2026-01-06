@@ -107,7 +107,7 @@
         });
 
         // Update cart count on AJAX complete
-        if (typeof jQuery !== 'undefined') {
+        if (typeof jQuery !== 'undefined' && typeof wc_cart_fragments_params !== 'undefined') {
             jQuery(document.body).on('added_to_cart', function() {
                 // Reload cart fragments to update count
                 jQuery.get(wc_cart_fragments_params.ajax_url + '?wc-ajax=get_refreshed_fragments', function(data) {

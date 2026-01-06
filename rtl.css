@@ -55,9 +55,3 @@ body {
 .nav-next {
     float: left;
 }
-
-.read-more:after {
-    content: '\2190';
-    margin-right: 0.5rem;
-    margin-left: 0;
-}
