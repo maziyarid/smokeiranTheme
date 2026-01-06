@@ -120,7 +120,9 @@
                     })
                     .fail(function() {
                         // Silently fail - cart count will update on page reload
-                        console.log('Failed to update cart fragments');
+                        if (window.console && window.console.log) {
+                            console.log('Failed to update cart fragments');
+                        }
                     });
             });
         }

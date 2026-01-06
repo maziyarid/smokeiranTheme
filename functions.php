@@ -353,7 +353,7 @@ function smokeiranTheme_pagination() {
  */
 function smokeiranTheme_breadcrumbs() {
     $show_on_home = 0; // 1 - show breadcrumbs on the homepage, 0 - don't show
-    $delimiter    = '&raquo;';
+    $delimiter    = ' &raquo; ';
     $home         = esc_html__( 'Home', 'smokeiranTheme' );
     $show_current = 1;
     $before       = '<span class="current">';
@@ -372,7 +372,7 @@ function smokeiranTheme_breadcrumbs() {
         if ( is_category() ) {
             $this_cat = get_category( get_query_var( 'cat' ), false );
             if ( $this_cat->parent != 0 ) {
-                echo wp_kses_post( get_category_parents( $this_cat->parent, true, ' ' . $delimiter . ' ' ) );
+                echo wp_kses_post( get_category_parents( $this_cat->parent, true, $delimiter ) );
             }
             echo $before . single_cat_title( '', false ) . $after;
         } elseif ( is_search() ) {
@@ -398,9 +398,10 @@ function smokeiranTheme_breadcrumbs() {
                 $cat  = get_the_category();
                 if ( ! empty( $cat ) ) {
                     $cat  = $cat[0];
-                    $cats = get_category_parents( $cat, true, ' ' . $delimiter . ' ' );
+                    $cats = get_category_parents( $cat, true, $delimiter );
                     if ( $show_current == 0 ) {
-                        $cats = preg_replace( "#^(.+)\s$delimiter\s$#", "$1", $cats );
+                        // Remove trailing delimiter
+                        $cats = rtrim( $cats, $delimiter );
                     }
                     echo wp_kses_post( $cats );
                 }
