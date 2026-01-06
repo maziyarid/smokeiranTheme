@@ -110,13 +110,18 @@
         if (typeof jQuery !== 'undefined' && typeof wc_cart_fragments_params !== 'undefined') {
             jQuery(document.body).on('added_to_cart', function() {
                 // Reload cart fragments to update count
-                jQuery.get(wc_cart_fragments_params.ajax_url + '?wc-ajax=get_refreshed_fragments', function(data) {
-                    if (data && data.fragments) {
-                        jQuery.each(data.fragments, function(key, value) {
-                            jQuery(key).replaceWith(value);
-                        });
-                    }
-                });
+                jQuery.get(wc_cart_fragments_params.ajax_url + '?wc-ajax=get_refreshed_fragments')
+                    .done(function(data) {
+                        if (data && data.fragments) {
+                            jQuery.each(data.fragments, function(key, value) {
+                                jQuery(key).replaceWith(value);
+                            });
+                        }
+                    })
+                    .fail(function() {
+                        // Silently fail - cart count will update on page reload
+                        console.log('Failed to update cart fragments');
+                    });
             });
         }
     }

@@ -372,11 +372,11 @@ function smokeiranTheme_breadcrumbs() {
         if ( is_category() ) {
             $this_cat = get_category( get_query_var( 'cat' ), false );
             if ( $this_cat->parent != 0 ) {
-                echo get_category_parents( $this_cat->parent, true, ' ' . $delimiter . ' ' );
+                echo wp_kses_post( get_category_parents( $this_cat->parent, true, ' ' . $delimiter . ' ' ) );
             }
             echo $before . single_cat_title( '', false ) . $after;
         } elseif ( is_search() ) {
-            echo $before . esc_html__( 'Search results for', 'smokeiranTheme' ) . ' "' . get_search_query() . '"' . $after;
+            echo $before . esc_html__( 'Search results for', 'smokeiranTheme' ) . ' "' . esc_html( get_search_query() ) . '"' . $after;
         } elseif ( is_day() ) {
             echo '<a href="' . esc_url( get_year_link( get_the_time( 'Y' ) ) ) . '">' . get_the_time( 'Y' ) . '</a> ' . $delimiter . ' ';
             echo '<a href="' . esc_url( get_month_link( get_the_time( 'Y' ), get_the_time( 'm' ) ) ) . '">' . get_the_time( 'F' ) . '</a> ' . $delimiter . ' ';
@@ -396,12 +396,14 @@ function smokeiranTheme_breadcrumbs() {
                 }
             } else {
                 $cat  = get_the_category();
-                $cat  = $cat[0];
-                $cats = get_category_parents( $cat, true, ' ' . $delimiter . ' ' );
-                if ( $show_current == 0 ) {
-                    $cats = preg_replace( "#^(.+)\s$delimiter\s$#", "$1", $cats );
+                if ( ! empty( $cat ) ) {
+                    $cat  = $cat[0];
+                    $cats = get_category_parents( $cat, true, ' ' . $delimiter . ' ' );
+                    if ( $show_current == 0 ) {
+                        $cats = preg_replace( "#^(.+)\s$delimiter\s$#", "$1", $cats );
+                    }
+                    echo wp_kses_post( $cats );
                 }
-                echo $cats;
                 if ( $show_current == 1 ) {
                     echo $before . get_the_title() . $after;
                 }
