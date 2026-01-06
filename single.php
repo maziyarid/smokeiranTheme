@@ -26,7 +26,6 @@ get_header();
                             esc_html_e( 'Posted on', 'smokeiranTheme' );
                             echo ' <time datetime="' . esc_attr( get_the_date( 'c' ) ) . '">' . esc_html( get_the_date() ) . '</time>';
                             ?>
-                            ?>
                         </span>
                         <span class="byline">
                             <?php
