@@ -1,41 +1,1991 @@
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-add_action( 'template_redirect', function () {
-    if ( ! is_account_page() ) return;
+/**
+ * =============================================================================
+ * SMOKE IRAN - My Account Page (Complete Redesign)
+ * =============================================================================
+ * Features:
+ * - Custom header & breadcrumb
+ * - Profile sidebar with avatar
+ * - Support tickets system
+ * - Order tracking
+ * - Notifications
+ * - Wishlist integration
+ * - Mobile responsive
+ * =============================================================================
+ */
 
-    add_filter( 'the_content', function ( $content ) {
-        if ( ! is_main_query() || ! in_the_loop() ) return $content;
+/**
+ * Check if current page is My Account
+ */
+function si_is_account_page() {
+    if ( ! function_exists( 'is_account_page' ) ) {
+        return false;
+    }
+    return is_account_page();
+}
 
-        ob_start();
-        ?>
-        <div class="si-container si-section si-grid si-gap-6" style="grid-template-columns: 280px 1fr;">
-            <aside class="si-card">
-                <div class="si-card-header">
-                    <h2 class="si-text-lg">حساب کاربری من</h2>
-                </div>
-                <div class="si-card-body">
-                    <?php
-                    // Woo account navigation
-                    if ( function_exists( 'woocommerce_account_navigation' ) ) {
-                        woocommerce_account_navigation();
-                    }
-                    ?>
-                </div>
-            </aside>
+/**
+ * Add body class
+ */
+add_filter( 'body_class', function( $classes ) {
+    if ( si_is_account_page() ) {
+        $classes[] = 'si-account-page';
+        $classes[] = 'si-account-redesign';
+    }
+    return $classes;
+} );
 
-            <main class="si-card">
-                <div class="si-card-body">
-                    <?php
-                    if ( function_exists( 'woocommerce_account_content' ) ) {
-                        woocommerce_account_content();
-                    } else {
-                        echo $content;
-                    }
-                    ?>
-                </div>
-            </main>
+/**
+ * =============================================================================
+ * REMOVE ALL DEFAULT ELEMENTS
+ * =============================================================================
+ */
+add_action( 'wp', function() {
+    if ( ! si_is_account_page() ) return;
+    
+    // Remove breadcrumbs
+    remove_action( 'woocommerce_before_main_content', 'woocommerce_breadcrumb', 20 );
+    remove_action( 'storefront_content_top', 'woocommerce_breadcrumb', 10 );
+    
+    // Remove Storefront page header
+    remove_action( 'storefront_page', 'storefront_page_header', 10 );
+    
+    // Remove page content header
+    add_filter( 'woocommerce_show_page_title', '__return_false' );
+    
+    // Force full width
+    add_filter( 'storefront_page_template', function() { return 'full-width'; } );
+    
+}, 1 );
+
+/**
+ * =============================================================================
+ * REGISTER CUSTOM ENDPOINTS
+ * =============================================================================
+ */
+add_action( 'init', function() {
+    add_rewrite_endpoint( 'support-tickets', EP_ROOT | EP_PAGES );
+    add_rewrite_endpoint( 'notifications', EP_ROOT | EP_PAGES );
+    add_rewrite_endpoint( 'wishlist', EP_ROOT | EP_PAGES );
+} );
+
+// Add to WooCommerce menu items
+add_filter( 'woocommerce_account_menu_items', function( $items ) {
+    $new_items = array();
+    
+    foreach ( $items as $key => $value ) {
+        $new_items[ $key ] = $value;
+        
+        // Add after orders
+        if ( $key === 'orders' ) {
+            $new_items['support-tickets'] = 'تیکت‌های پشتیبانی';
+        }
+        
+        // Add before logout
+        if ( $key === 'edit-account' ) {
+            $new_items['notifications'] = 'اعلان‌ها';
+            $new_items['wishlist'] = 'علاقه‌مندی‌ها';
+        }
+    }
+    
+    return $new_items;
+}, 10 );
+
+// Register endpoint content
+add_action( 'woocommerce_account_support-tickets_endpoint', 'si_support_tickets_content' );
+add_action( 'woocommerce_account_notifications_endpoint', 'si_notifications_content' );
+add_action( 'woocommerce_account_wishlist_endpoint', 'si_wishlist_content' );
+
+/**
+ * =============================================================================
+ * INJECT CUSTOM HEADER (Before Everything)
+ * =============================================================================
+ */
+add_action( 'storefront_content_top', 'si_account_custom_header', 1 );
+function si_account_custom_header() {
+    if ( ! si_is_account_page() ) return;
+    
+    $current_user = wp_get_current_user();
+    if ( ! $current_user->ID ) return;
+    
+    // Get current endpoint for title
+    $current_endpoint = si_get_current_account_endpoint();
+    $page_titles = array(
+        'dashboard'        => 'داشبورد',
+        'orders'           => 'سفارش‌های من',
+        'downloads'        => 'دانلودها',
+        'edit-address'     => 'آدرس‌ها',
+        'edit-account'     => 'ویرایش حساب',
+        'support-tickets'  => 'تیکت‌های پشتیبانی',
+        'notifications'    => 'اعلان‌ها',
+        'wishlist'         => 'علاقه‌مندی‌ها',
+        'view-order'       => 'جزئیات سفارش',
+    );
+    $page_title = isset( $page_titles[ $current_endpoint ] ) ? $page_titles[ $current_endpoint ] : 'حساب کاربری';
+    ?>
+    
+    <!-- Breadcrumb -->
+    <div class="si-breadcrumb-wrap">
+        <div class="si-container">
+            <nav class="si-breadcrumb-nav" aria-label="مسیر ناوبری">
+                <a href="<?php echo esc_url( home_url( '/' ) ); ?>">
+                    <i class="fa-solid fa-house"></i>
+                    <span>خانه</span>
+                </a>
+                <i class="fa-solid fa-chevron-left si-breadcrumb-sep"></i>
+                <?php if ( $current_endpoint !== 'dashboard' ) : ?>
+                    <a href="<?php echo esc_url( wc_get_account_endpoint_url( 'dashboard' ) ); ?>">حساب کاربری</a>
+                    <i class="fa-solid fa-chevron-left si-breadcrumb-sep"></i>
+                <?php endif; ?>
+                <span class="si-breadcrumb-current"><?php echo esc_html( $page_title ); ?></span>
+            </nav>
         </div>
-        <?php
-        return ob_get_clean();
-    }, 999 );
-});
+    </div>
+    
+    <!-- Account Header -->
+    <div class="si-account-header">
+        <div class="si-account-header-bg"></div>
+        <div class="si-container">
+            <div class="si-account-header-content">
+                <div class="si-account-header-info">
+                    <h1 class="si-account-header-title">
+                        <i class="fa-solid fa-user-circle"></i>
+                        <?php echo esc_html( $page_title ); ?>
+                    </h1>
+                    <p class="si-account-header-welcome">
+                        خوش آمدید، <strong><?php echo esc_html( $current_user->display_name ); ?></strong>
+                    </p>
+                </div>
+                <div class="si-account-header-actions">
+                    <a href="<?php echo esc_url( function_exists( 'wc_get_page_permalink' ) ? wc_get_page_permalink( 'shop' ) : home_url( '/shop/' ) ); ?>" class="si-header-btn si-header-btn-primary">
+                        <i class="fa-solid fa-bag-shopping"></i>
+                        <span>ادامه خرید</span>
+                    </a>
+                    <a href="<?php echo esc_url( wc_get_account_endpoint_url( 'support-tickets' ) ); ?>" class="si-header-btn si-header-btn-outline">
+                        <i class="fa-solid fa-headset"></i>
+                        <span>پشتیبانی</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <?php
+}
+
+/**
+ * Get current account endpoint
+ */
+function si_get_current_account_endpoint() {
+    global $wp;
+    
+    $endpoints = array( 'orders', 'downloads', 'edit-address', 'edit-account', 'support-tickets', 'notifications', 'wishlist', 'view-order' );
+    
+    foreach ( $endpoints as $endpoint ) {
+        if ( isset( $wp->query_vars[ $endpoint ] ) ) {
+            return $endpoint;
+        }
+    }
+    
+    return 'dashboard';
+}
+
+/**
+ * =============================================================================
+ * LAYOUT WRAPPER START
+ * =============================================================================
+ */
+add_action( 'woocommerce_before_account_navigation', 'si_account_layout_start', 1 );
+function si_account_layout_start() {
+    ?>
+    <div class="si-account-main">
+        <div class="si-container">
+            <!-- Mobile Menu Toggle -->
+            <button type="button" class="si-mobile-menu-toggle" id="si-mobile-menu-toggle">
+                <i class="fa-solid fa-bars"></i>
+                <span>منوی حساب کاربری</span>
+                <i class="fa-solid fa-chevron-down"></i>
+            </button>
+            <div class="si-account-layout">
+    <?php
+}
+
+/**
+ * =============================================================================
+ * CUSTOM SIDEBAR NAVIGATION
+ * =============================================================================
+ */
+add_action( 'init', function() {
+    if ( ! class_exists( 'WooCommerce' ) ) return;
+    remove_action( 'woocommerce_account_navigation', 'woocommerce_account_navigation' );
+    add_action( 'woocommerce_account_navigation', 'si_custom_account_sidebar' );
+} );
+
+function si_custom_account_sidebar() {
+    if ( ! function_exists( 'wc_get_account_menu_items' ) ) return;
+    
+    $current_user = wp_get_current_user();
+    if ( ! $current_user->ID ) return;
+    
+    $avatar = get_avatar_url( $current_user->ID, array( 'size' => 200 ) );
+    $member_since = date_i18n( 'j F Y', strtotime( $current_user->user_registered ) );
+    $order_count = function_exists( 'wc_get_customer_order_count' ) ? wc_get_customer_order_count( $current_user->ID ) : 0;
+    $current_endpoint = si_get_current_account_endpoint();
+    
+    // Menu icons
+    $menu_icons = array(
+        'dashboard'        => 'fa-solid fa-gauge-high',
+        'orders'           => 'fa-solid fa-bag-shopping',
+        'support-tickets'  => 'fa-solid fa-headset',
+        'downloads'        => 'fa-solid fa-cloud-arrow-down',
+        'edit-address'     => 'fa-solid fa-location-dot',
+        'edit-account'     => 'fa-solid fa-user-gear',
+        'notifications'    => 'fa-solid fa-bell',
+        'wishlist'         => 'fa-solid fa-heart',
+        'customer-logout'  => 'fa-solid fa-right-from-bracket',
+    );
+    
+    // Menu badges
+    $menu_badges = array(
+        'orders' => $order_count > 0 ? $order_count : '',
+        'notifications' => si_get_unread_notifications_count(),
+        'support-tickets' => si_get_open_tickets_count(),
+    );
+    ?>
+    
+    <aside class="si-account-sidebar" id="si-account-sidebar">
+        <!-- Close button for mobile -->
+        <button type="button" class="si-sidebar-close" id="si-sidebar-close">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        
+        <!-- Profile Card -->
+        <div class="si-profile-card">
+            <div class="si-profile-avatar-wrapper">
+                <div class="si-profile-avatar">
+                    <img src="<?php echo esc_url( $avatar ); ?>" alt="<?php echo esc_attr( $current_user->display_name ); ?>">
+                </div>
+                <a href="<?php echo esc_url( wc_get_account_endpoint_url( 'edit-account' ) ); ?>" class="si-profile-edit-btn" title="ویرایش پروفایل">
+                    <i class="fa-solid fa-pen"></i>
+                </a>
+            </div>
+            <h3 class="si-profile-name"><?php echo esc_html( $current_user->display_name ); ?></h3>
+            <p class="si-profile-email"><?php echo esc_html( $current_user->user_email ); ?></p>
+            <div class="si-profile-meta">
+                <span class="si-profile-meta-item">
+                    <i class="fa-solid fa-calendar-check"></i>
+                    عضویت: <?php echo esc_html( $member_since ); ?>
+                </span>
+            </div>
+            
+            <!-- Quick Stats -->
+            <div class="si-profile-stats">
+                <div class="si-profile-stat">
+                    <span class="si-profile-stat-value"><?php echo number_format_i18n( $order_count ); ?></span>
+                    <span class="si-profile-stat-label">سفارش</span>
+                </div>
+                <div class="si-profile-stat">
+                    <span class="si-profile-stat-value"><?php 
+                        $total_spent = function_exists( 'wc_get_customer_total_spent' ) ? wc_get_customer_total_spent( $current_user->ID ) : 0;
+                        echo $total_spent > 0 ? wc_price( $total_spent ) : '۰';
+                    ?></span>
+                    <span class="si-profile-stat-label">خرید</span>
+                </div>
+                <div class="si-profile-stat">
+                    <span class="si-profile-stat-value"><?php 
+                        $days = floor( ( time() - strtotime( $current_user->user_registered ) ) / DAY_IN_SECONDS );
+                        echo number_format_i18n( $days );
+                    ?></span>
+                    <span class="si-profile-stat-label">روز</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Navigation Menu -->
+        <nav class="si-sidebar-nav">
+            <ul class="si-sidebar-menu">
+                <?php foreach ( wc_get_account_menu_items() as $endpoint => $label ) : 
+                    $icon = isset( $menu_icons[ $endpoint ] ) ? $menu_icons[ $endpoint ] : 'fa-solid fa-circle';
+                    $badge = isset( $menu_badges[ $endpoint ] ) && $menu_badges[ $endpoint ] ? $menu_badges[ $endpoint ] : '';
+                    $is_active = ( $endpoint === $current_endpoint ) || ( $endpoint === 'dashboard' && $current_endpoint === 'dashboard' );
+                    $is_logout = ( $endpoint === 'customer-logout' );
+                ?>
+                <li class="si-sidebar-menu-item <?php echo $is_active ? 'is-active' : ''; ?> <?php echo $is_logout ? 'is-logout' : ''; ?>">
+                    <a href="<?php echo esc_url( wc_get_account_endpoint_url( $endpoint ) ); ?>">
+                        <span class="si-menu-icon">
+                            <i class="<?php echo esc_attr( $icon ); ?>"></i>
+                        </span>
+                        <span class="si-menu-text"><?php echo esc_html( $label ); ?></span>
+                        <?php if ( $badge ) : ?>
+                            <span class="si-menu-badge"><?php echo esc_html( $badge ); ?></span>
+                        <?php endif; ?>
+                    </a>
+                </li>
+                <?php endforeach; ?>
+            </ul>
+        </nav>
+        
+        <!-- Support Box -->
+        <div class="si-sidebar-support">
+            <div class="si-support-icon">
+                <i class="fa-solid fa-question-circle"></i>
+            </div>
+            <h4>نیاز به کمک دارید؟</h4>
+            <p>تیم پشتیبانی ما آماده پاسخگویی است</p>
+            <a href="<?php echo esc_url( wc_get_account_endpoint_url( 'support-tickets' ) ); ?>" class="si-support-btn">
+                <i class="fa-solid fa-plus"></i>
+                ارسال تیکت جدید
+            </a>
+        </div>
+    </aside>
+    
+    <!-- Mobile Overlay -->
+    <div class="si-sidebar-overlay" id="si-sidebar-overlay"></div>
+    
+    <?php
+}
+
+/**
+ * Helper functions for badges
+ */
+function si_get_unread_notifications_count() {
+    // Placeholder - implement your own logic
+    return 0;
+}
+
+function si_get_open_tickets_count() {
+    // Placeholder - implement your own logic
+    return 0;
+}
+
+/**
+ * =============================================================================
+ * CONTENT WRAPPER
+ * =============================================================================
+ */
+add_action( 'woocommerce_before_account_content', 'si_account_content_start', 1 );
+function si_account_content_start() {
+    echo '<div class="si-account-content">';
+}
+
+add_action( 'woocommerce_after_account_content', 'si_account_content_end', 5 );
+function si_account_content_end() {
+    echo '</div><!-- .si-account-content -->';
+}
+
+/**
+ * =============================================================================
+ * LAYOUT WRAPPER END
+ * =============================================================================
+ */
+add_action( 'woocommerce_after_account_content', 'si_account_layout_end', 99 );
+function si_account_layout_end() {
+    ?>
+            </div><!-- .si-account-layout -->
+        </div><!-- .si-container -->
+    </div><!-- .si-account-main -->
+    <?php
+}
+
+/**
+ * =============================================================================
+ * CUSTOM DASHBOARD
+ * =============================================================================
+ */
+add_action( 'init', function() {
+    if ( ! class_exists( 'WooCommerce' ) ) return;
+    remove_action( 'woocommerce_account_dashboard', 'woocommerce_account_dashboard' );
+    add_action( 'woocommerce_account_dashboard', 'si_custom_dashboard' );
+} );
+
+function si_custom_dashboard() {
+    if ( ! class_exists( 'WC_Customer' ) ) return;
+    
+    $current_user = wp_get_current_user();
+    $customer = new WC_Customer( $current_user->ID );
+    
+    $order_count = function_exists( 'wc_get_customer_order_count' ) ? wc_get_customer_order_count( $current_user->ID ) : 0;
+    $total_spent = function_exists( 'wc_get_customer_total_spent' ) ? wc_get_customer_total_spent( $current_user->ID ) : 0;
+    
+    $recent_orders = function_exists( 'wc_get_orders' ) ? wc_get_orders( array(
+        'customer_id' => $current_user->ID,
+        'limit'       => 5,
+        'orderby'     => 'date',
+        'order'       => 'DESC',
+    ) ) : array();
+    
+    $billing_address = $customer->get_billing_address();
+    $shipping_address = $customer->get_shipping_address();
+    ?>
+    
+    <div class="si-dashboard">
+        
+        <!-- Welcome Card -->
+        <div class="si-welcome-card">
+            <div class="si-welcome-content">
+                <h2>سلام <?php echo esc_html( $current_user->display_name ); ?>! 👋</h2>
+                <p>به پنل کاربری خود خوش آمدید. از اینجا می‌توانید سفارشات، آدرس‌ها و اطلاعات حساب خود را مدیریت کنید.</p>
+            </div>
+            <div class="si-welcome-illustration">
+                <i class="fa-solid fa-rocket"></i>
+            </div>
+        </div>
+        
+        <!-- Stats Cards -->
+        <div class="si-stats-grid">
+            <div class="si-stat-card si-stat-orders">
+                <div class="si-stat-icon">
+                    <i class="fa-solid fa-shopping-bag"></i>
+                </div>
+                <div class="si-stat-content">
+                    <span class="si-stat-value"><?php echo number_format_i18n( $order_count ); ?></span>
+                    <span class="si-stat-label">کل سفارش‌ها</span>
+                </div>
+                <a href="<?php echo esc_url( wc_get_account_endpoint_url( 'orders' ) ); ?>" class="si-stat-link">
+                    مشاهده <i class="fa-solid fa-arrow-left"></i>
+                </a>
+            </div>
+            
+            <div class="si-stat-card si-stat-spent">
+                <div class="si-stat-icon">
+                    <i class="fa-solid fa-wallet"></i>
+                </div>
+                <div class="si-stat-content">
+                    <span class="si-stat-value"><?php echo wc_price( $total_spent ); ?></span>
+                    <span class="si-stat-label">مجموع خرید</span>
+                </div>
+            </div>
+            
+            <div class="si-stat-card si-stat-tickets">
+                <div class="si-stat-icon">
+                    <i class="fa-solid fa-headset"></i>
+                </div>
+                <div class="si-stat-content">
+                    <span class="si-stat-value"><?php echo number_format_i18n( si_get_open_tickets_count() ); ?></span>
+                    <span class="si-stat-label">تیکت باز</span>
+                </div>
+                <a href="<?php echo esc_url( wc_get_account_endpoint_url( 'support-tickets' ) ); ?>" class="si-stat-link">
+                    مشاهده <i class="fa-solid fa-arrow-left"></i>
+                </a>
+            </div>
+            
+            <div class="si-stat-card si-stat-wishlist">
+                <div class="si-stat-icon">
+                    <i class="fa-solid fa-heart"></i>
+                </div>
+                <div class="si-stat-content">
+                    <span class="si-stat-value">۰</span>
+                    <span class="si-stat-label">علاقه‌مندی</span>
+                </div>
+                <a href="<?php echo esc_url( wc_get_account_endpoint_url( 'wishlist' ) ); ?>" class="si-stat-link">
+                    مشاهده <i class="fa-solid fa-arrow-left"></i>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="si-quick-actions">
+            <h3 class="si-section-title">
+                <i class="fa-solid fa-bolt"></i>
+                دسترسی سریع
+            </h3>
+            <div class="si-actions-grid">
+                <a href="<?php echo esc_url( wc_get_account_endpoint_url( 'orders' ) ); ?>" class="si-action-item">
+                    <div class="si-action-icon" style="--color: #3b82f6">
+                        <i class="fa-solid fa-truck-fast"></i>
+                    </div>
+                    <span>پیگیری سفارش</span>
+                </a>
+                <a href="<?php echo esc_url( wc_get_account_endpoint_url( 'support-tickets' ) ); ?>" class="si-action-item">
+                    <div class="si-action-icon" style="--color: #10b981">
+                        <i class="fa-solid fa-ticket"></i>
+                    </div>
+                    <span>ثبت تیکت</span>
+                </a>
+                <a href="<?php echo esc_url( wc_get_account_endpoint_url( 'edit-address' ) ); ?>" class="si-action-item">
+                    <div class="si-action-icon" style="--color: #f59e0b">
+                        <i class="fa-solid fa-map-marker-alt"></i>
+                    </div>
+                    <span>آدرس‌های من</span>
+                </a>
+                <a href="<?php echo esc_url( wc_get_account_endpoint_url( 'edit-account' ) ); ?>" class="si-action-item">
+                    <div class="si-action-icon" style="--color: #8b5cf6">
+                        <i class="fa-solid fa-user-edit"></i>
+                    </div>
+                    <span>ویرایش پروفایل</span>
+                </a>
+                <a href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>" class="si-action-item">
+                    <div class="si-action-icon" style="--color: #ec4899">
+                        <i class="fa-solid fa-store"></i>
+                    </div>
+                    <span>فروشگاه</span>
+                </a>
+                <a href="<?php echo esc_url( wc_get_account_endpoint_url( 'wishlist' ) ); ?>" class="si-action-item">
+                    <div class="si-action-icon" style="--color: #ef4444">
+                        <i class="fa-solid fa-heart"></i>
+                    </div>
+                    <span>علاقه‌مندی‌ها</span>
+                </a>
+            </div>
+        </div>
+        
+        <!-- Recent Orders -->
+        <div class="si-recent-orders">
+            <div class="si-section-header">
+                <h3 class="si-section-title">
+                    <i class="fa-solid fa-clock-rotate-left"></i>
+                    سفارش‌های اخیر
+                </h3>
+                <?php if ( $order_count > 0 ) : ?>
+                <a href="<?php echo esc_url( wc_get_account_endpoint_url( 'orders' ) ); ?>" class="si-section-link">
+                    مشاهده همه <i class="fa-solid fa-arrow-left"></i>
+                </a>
+                <?php endif; ?>
+            </div>
+            
+            <?php if ( ! empty( $recent_orders ) ) : ?>
+            <div class="si-orders-list">
+                <?php foreach ( $recent_orders as $order ) : 
+                    $status = $order->get_status();
+                    $status_name = wc_get_order_status_name( $status );
+                ?>
+                <div class="si-order-item">
+                    <div class="si-order-main">
+                        <div class="si-order-images">
+                            <?php 
+                            $items = array_slice( $order->get_items(), 0, 3 );
+                            foreach ( $items as $item ) : 
+                                $product = $item->get_product();
+                                $image = $product ? wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' ) : wc_placeholder_img_src();
+                            ?>
+                            <div class="si-order-thumb">
+                                <img src="<?php echo esc_url( $image ); ?>" alt="">
+                            </div>
+                            <?php endforeach; ?>
+                            <?php if ( count( $order->get_items() ) > 3 ) : ?>
+                            <div class="si-order-thumb si-order-more">
+                                +<?php echo count( $order->get_items() ) - 3; ?>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                        <div class="si-order-info">
+                            <span class="si-order-number">سفارش #<?php echo $order->get_order_number(); ?></span>
+                            <span class="si-order-date"><?php echo wc_format_datetime( $order->get_date_created() ); ?></span>
+                        </div>
+                    </div>
+                    <div class="si-order-meta">
+                        <span class="si-order-status si-status-<?php echo esc_attr( $status ); ?>">
+                            <?php echo esc_html( $status_name ); ?>
+                        </span>
+                        <span class="si-order-total"><?php echo $order->get_formatted_order_total(); ?></span>
+                    </div>
+                    <a href="<?php echo esc_url( $order->get_view_order_url() ); ?>" class="si-order-view">
+                        <i class="fa-solid fa-eye"></i>
+                    </a>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <?php else : ?>
+            <div class="si-empty-state">
+                <div class="si-empty-icon">
+                    <i class="fa-solid fa-shopping-bag"></i>
+                </div>
+                <h4>هنوز سفارشی ثبت نکرده‌اید</h4>
+                <p>همین حالا اولین خرید خود را انجام دهید!</p>
+                <a href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>" class="si-btn-primary">
+                    <i class="fa-solid fa-store"></i>
+                    مشاهده فروشگاه
+                </a>
+            </div>
+            <?php endif; ?>
+        </div>
+        
+        <!-- Address Cards -->
+        <div class="si-address-section">
+            <div class="si-section-header">
+                <h3 class="si-section-title">
+                    <i class="fa-solid fa-location-dot"></i>
+                    آدرس‌های من
+                </h3>
+                <a href="<?php echo esc_url( wc_get_account_endpoint_url( 'edit-address' ) ); ?>" class="si-section-link">
+                    ویرایش <i class="fa-solid fa-arrow-left"></i>
+                </a>
+            </div>
+            
+            <div class="si-address-cards">
+                <div class="si-address-card">
+                    <div class="si-address-header">
+                        <div class="si-address-icon">
+                            <i class="fa-solid fa-file-invoice"></i>
+                        </div>
+                        <span>آدرس صورتحساب</span>
+                    </div>
+                    <div class="si-address-body">
+                        <?php if ( $billing_address ) : ?>
+                            <address><?php echo wp_kses_post( $customer->get_formatted_billing_address() ); ?></address>
+                        <?php else : ?>
+                            <p class="si-no-address">آدرس تنظیم نشده</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                
+                <div class="si-address-card">
+                    <div class="si-address-header">
+                        <div class="si-address-icon">
+                            <i class="fa-solid fa-truck"></i>
+                        </div>
+                        <span>آدرس ارسال</span>
+                    </div>
+                    <div class="si-address-body">
+                        <?php if ( $shipping_address ) : ?>
+                            <address><?php echo wp_kses_post( $customer->get_formatted_shipping_address() ); ?></address>
+                        <?php else : ?>
+                            <p class="si-no-address">آدرس تنظیم نشده</p>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    
+    <?php
+}
+
+/**
+ * =============================================================================
+ * SUPPORT TICKETS CONTENT
+ * =============================================================================
+ */
+function si_support_tickets_content() {
+    $current_user = wp_get_current_user();
+    ?>
+    <div class="si-tickets-page">
+        
+        <!-- New Ticket Button -->
+        <div class="si-tickets-header">
+            <p>از این بخش می‌توانید با تیم پشتیبانی در ارتباط باشید.</p>
+            <button type="button" class="si-btn-primary" id="si-new-ticket-btn">
+                <i class="fa-solid fa-plus"></i>
+                ثبت تیکت جدید
+            </button>
+        </div>
+        
+        <!-- New Ticket Form (Hidden by default) -->
+        <div class="si-new-ticket-form" id="si-new-ticket-form" style="display: none;">
+            <h3>
+                <i class="fa-solid fa-ticket"></i>
+                ثبت تیکت جدید
+            </h3>
+            <form method="post" action="">
+                <?php wp_nonce_field( 'si_submit_ticket', 'si_ticket_nonce' ); ?>
+                
+                <div class="si-form-row">
+                    <label for="ticket_subject">موضوع تیکت <span class="required">*</span></label>
+                    <input type="text" name="ticket_subject" id="ticket_subject" required>
+                </div>
+                
+                <div class="si-form-row">
+                    <label for="ticket_department">دپارتمان</label>
+                    <select name="ticket_department" id="ticket_department">
+                        <option value="sales">فروش</option>
+                        <option value="support">پشتیبانی فنی</option>
+                        <option value="billing">مالی</option>
+                        <option value="other">سایر</option>
+                    </select>
+                </div>
+                
+                <div class="si-form-row">
+                    <label for="ticket_priority">اولویت</label>
+                    <select name="ticket_priority" id="ticket_priority">
+                        <option value="low">کم</option>
+                        <option value="medium" selected>متوسط</option>
+                        <option value="high">بالا</option>
+                    </select>
+                </div>
+                
+                <div class="si-form-row">
+                    <label for="ticket_order">شماره سفارش (اختیاری)</label>
+                    <input type="text" name="ticket_order" id="ticket_order" placeholder="در صورت مرتبط بودن با سفارش">
+                </div>
+                
+                <div class="si-form-row">
+                    <label for="ticket_message">پیام <span class="required">*</span></label>
+                    <textarea name="ticket_message" id="ticket_message" rows="6" required placeholder="توضیحات خود را وارد کنید..."></textarea>
+                </div>
+                
+                <div class="si-form-row">
+                    <label for="ticket_attachment">فایل پیوست (اختیاری)</label>
+                    <input type="file" name="ticket_attachment" id="ticket_attachment" accept=".jpg,.jpeg,.png,.pdf,.zip">
+                    <span class="si-form-hint">فرمت‌های مجاز: JPG, PNG, PDF, ZIP (حداکثر 5MB)</span>
+                </div>
+                
+                <div class="si-form-actions">
+                    <button type="submit" name="submit_ticket" class="si-btn-primary">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        ارسال تیکت
+                    </button>
+                    <button type="button" class="si-btn-secondary" id="si-cancel-ticket">
+                        انصراف
+                    </button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Tickets List -->
+        <div class="si-tickets-list">
+            <h3>
+                <i class="fa-solid fa-list"></i>
+                تیکت‌های من
+            </h3>
+            
+            <!-- Example tickets - Replace with actual data -->
+            <div class="si-empty-state">
+                <div class="si-empty-icon">
+                    <i class="fa-solid fa-ticket"></i>
+                </div>
+                <h4>هیچ تیکتی ثبت نشده است</h4>
+                <p>برای ارتباط با پشتیبانی، یک تیکت جدید ثبت کنید.</p>
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var newTicketBtn = document.getElementById('si-new-ticket-btn');
+        var ticketForm = document.getElementById('si-new-ticket-form');
+        var cancelBtn = document.getElementById('si-cancel-ticket');
+        
+        if (newTicketBtn && ticketForm) {
+            newTicketBtn.addEventListener('click', function() {
+                ticketForm.style.display = 'block';
+                newTicketBtn.style.display = 'none';
+                ticketForm.scrollIntoView({ behavior: 'smooth' });
+            });
+        }
+        
+        if (cancelBtn && ticketForm && newTicketBtn) {
+            cancelBtn.addEventListener('click', function() {
+                ticketForm.style.display = 'none';
+                newTicketBtn.style.display = 'inline-flex';
+            });
+        }
+    });
+    </script>
+    <?php
+}
+
+/**
+ * =============================================================================
+ * NOTIFICATIONS CONTENT
+ * =============================================================================
+ */
+function si_notifications_content() {
+    ?>
+    <div class="si-notifications-page">
+        <div class="si-empty-state">
+            <div class="si-empty-icon">
+                <i class="fa-solid fa-bell"></i>
+            </div>
+            <h4>اعلان جدیدی ندارید</h4>
+            <p>اعلان‌های مربوط به سفارشات و حساب کاربری شما در اینجا نمایش داده می‌شود.</p>
+        </div>
+    </div>
+    <?php
+}
+
+/**
+ * =============================================================================
+ * WISHLIST CONTENT
+ * =============================================================================
+ */
+function si_wishlist_content() {
+    ?>
+    <div class="si-wishlist-page">
+        <div class="si-empty-state">
+            <div class="si-empty-icon">
+                <i class="fa-solid fa-heart"></i>
+            </div>
+            <h4>لیست علاقه‌مندی شما خالی است</h4>
+            <p>محصولات مورد علاقه خود را به این لیست اضافه کنید.</p>
+            <a href="<?php echo esc_url( wc_get_page_permalink( 'shop' ) ); ?>" class="si-btn-primary">
+                <i class="fa-solid fa-store"></i>
+                مشاهده فروشگاه
+            </a>
+        </div>
+    </div>
+    <?php
+}
+
+/**
+ * =============================================================================
+ * ORDER TRACKING
+ * =============================================================================
+ */
+add_action( 'woocommerce_view_order', 'si_order_tracking_display', 5 );
+function si_order_tracking_display( $order_id ) {
+    $order = wc_get_order( $order_id );
+    if ( ! $order ) return;
+    
+    $status = $order->get_status();
+    $steps = array(
+        array( 'key' => 'pending',    'label' => 'ثبت سفارش',    'icon' => 'fa-clipboard-check' ),
+        array( 'key' => 'processing', 'label' => 'پردازش',       'icon' => 'fa-box' ),
+        array( 'key' => 'shipped',    'label' => 'ارسال شده',    'icon' => 'fa-truck' ),
+        array( 'key' => 'completed',  'label' => 'تحویل داده شده', 'icon' => 'fa-circle-check' ),
+    );
+    
+    $status_order = array( 'pending' => 1, 'on-hold' => 1, 'processing' => 2, 'shipped' => 3, 'completed' => 4 );
+    $current = isset( $status_order[ $status ] ) ? $status_order[ $status ] : 1;
+    ?>
+    
+    <div class="si-order-tracking">
+        <h3><i class="fa-solid fa-route"></i> وضعیت سفارش</h3>
+        <div class="si-tracking-steps">
+            <?php foreach ( $steps as $index => $step ) : 
+                $step_num = $index + 1;
+                $is_done = $current >= $step_num;
+                $is_current = $current === $step_num;
+            ?>
+            <div class="si-tracking-step <?php echo $is_done ? 'is-done' : ''; ?> <?php echo $is_current ? 'is-current' : ''; ?>">
+                <div class="si-step-icon">
+                    <i class="fa-solid <?php echo esc_attr( $step['icon'] ); ?>"></i>
+                </div>
+                <span class="si-step-label"><?php echo esc_html( $step['label'] ); ?></span>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    
+    <?php
+}
+
+/**
+ * =============================================================================
+ * CSS STYLES
+ * =============================================================================
+ */
+add_action( 'wp_head', function() {
+    if ( ! si_is_account_page() ) return;
+    ?>
+    <style id="si-account-css">
+    /* ==========================================================================
+       RESET & HIDE DEFAULTS
+       ========================================================================== */
+    .si-account-page .entry-header,
+    .si-account-page .page-header,
+    .si-account-page .entry-title,
+    .si-account-page .page-title,
+    .si-account-page .woocommerce-breadcrumb,
+    .si-account-page .storefront-breadcrumb,
+    .si-account-page article > header,
+    .si-account-page .hentry > header,
+    .si-account-page .woocommerce-MyAccount-navigation,
+    .si-account-page .si-card-header {
+        display: none !important;
+    }
+    .si-account-page .site-main { padding: 0 !important; }
+    .si-account-page .woocommerce-MyAccount-content { width: 100% !important; float: none !important; }
+    
+    .si-container { max-width: 1400px; margin: 0 auto; padding: 0 20px; }
+    
+    /* ==========================================================================
+       BREADCRUMB
+       ========================================================================== */
+    .si-breadcrumb-wrap {
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 14px 0;
+    }
+    [data-theme="dark"] .si-breadcrumb-wrap { background: #0f0f14; border-color: #1e1e2d; }
+    
+    .si-breadcrumb-nav {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 13px;
+        color: #64748b;
+    }
+    .si-breadcrumb-nav a {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #64748b;
+        text-decoration: none;
+    }
+    .si-breadcrumb-nav a:hover { color: #29853A; }
+    .si-breadcrumb-sep { font-size: 9px; color: #cbd5e1; }
+    .si-breadcrumb-current { color: #29853A; font-weight: 600; }
+    
+    /* ==========================================================================
+       HEADER
+       ========================================================================== */
+    .si-account-header {
+        position: relative;
+        background: linear-gradient(135deg, #0f1a12 0%, #1a3a20 100%);
+        padding: 40px 0;
+        overflow: hidden;
+    }
+    .si-account-header-bg {
+        position: absolute;
+        inset: 0;
+        background-image: radial-gradient(circle at 20% 50%, rgba(41,133,58,0.15) 0%, transparent 50%);
+    }
+    .si-account-header-content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+    }
+    .si-account-header-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 26px;
+        font-weight: 800;
+        color: #fff;
+        margin: 0 0 8px;
+    }
+    .si-account-header-title i { color: #4ade80; }
+    .si-account-header-welcome {
+        font-size: 14px;
+        color: rgba(255,255,255,0.7);
+        margin: 0;
+    }
+    .si-account-header-welcome strong { color: #fff; }
+    .si-account-header-actions { display: flex; gap: 12px; }
+    
+    .si-header-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .si-header-btn-primary {
+        background: #29853A;
+        color: #fff;
+    }
+    .si-header-btn-primary:hover { background: #1e6b2d; color: #fff; }
+    .si-header-btn-outline {
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+        color: #fff;
+    }
+    .si-header-btn-outline:hover { background: rgba(255,255,255,0.2); color: #fff; }
+    
+    /* ==========================================================================
+       MAIN LAYOUT
+       ========================================================================== */
+    .si-account-main {
+        padding: 40px 0 60px;
+        background: #f1f5f9;
+        min-height: 60vh;
+    }
+    [data-theme="dark"] .si-account-main { background: #09090d; }
+    
+    .si-account-layout {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 30px;
+        align-items: start;
+    }
+    
+    .si-mobile-menu-toggle {
+        display: none;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 16px 20px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        font-size: 15px;
+        font-weight: 600;
+        color: #1e293b;
+        cursor: pointer;
+        margin-bottom: 20px;
+    }
+    .si-mobile-menu-toggle i:first-child { margin-left: 10px; }
+    [data-theme="dark"] .si-mobile-menu-toggle { background: #16161f; border-color: #252532; color: #f1f5f9; }
+    
+    /* ==========================================================================
+       SIDEBAR
+       ========================================================================== */
+    .si-account-sidebar {
+        position: sticky;
+        top: 100px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+    }
+    [data-theme="dark"] .si-account-sidebar { background: #16161f; border-color: #252532; }
+    
+    .si-sidebar-close {
+        display: none;
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        width: 36px;
+        height: 36px;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 16px;
+        color: #64748b;
+        cursor: pointer;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+    }
+    .si-sidebar-close:hover { background: #fee2e2; border-color: #ef4444; color: #ef4444; }
+    
+    /* Profile Card */
+    .si-profile-card {
+        padding: 28px 20px;
+        background: linear-gradient(135deg, #29853A 0%, #1e6b2d 100%);
+        text-align: center;
+    }
+    .si-profile-avatar-wrapper {
+        position: relative;
+        width: 100px;
+        height: 100px;
+        margin: 0 auto 16px;
+    }
+    .si-profile-avatar {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        border: 4px solid rgba(255,255,255,0.25);
+        overflow: hidden;
+    }
+    .si-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .si-profile-edit-btn {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 32px;
+        height: 32px;
+        background: #fff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        color: #29853A;
+        text-decoration: none;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        transition: all 0.2s;
+    }
+    .si-profile-edit-btn:hover { transform: scale(1.1); color: #1e6b2d; }
+    
+    .si-profile-name {
+        font-size: 18px;
+        font-weight: 700;
+        color: #fff;
+        margin: 0 0 4px;
+    }
+    .si-profile-email {
+        font-size: 13px;
+        color: rgba(255,255,255,0.8);
+        margin: 0 0 12px;
+        word-break: break-all;
+    }
+    .si-profile-meta {
+        margin-bottom: 16px;
+    }
+    .si-profile-meta-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 20px;
+        font-size: 12px;
+        color: rgba(255,255,255,0.9);
+    }
+    
+    .si-profile-stats {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(255,255,255,0.15);
+    }
+    .si-profile-stat {
+        text-align: center;
+    }
+    .si-profile-stat-value {
+        display: block;
+        font-size: 18px;
+        font-weight: 800;
+        color: #fff;
+    }
+    .si-profile-stat-label {
+        font-size: 11px;
+        color: rgba(255,255,255,0.7);
+    }
+    
+    /* Sidebar Nav */
+    .si-sidebar-nav { padding: 12px; }
+    .si-sidebar-menu { list-style: none; margin: 0; padding: 0; }
+    .si-sidebar-menu-item { margin-bottom: 4px; }
+    .si-sidebar-menu-item a {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 16px;
+        border-radius: 12px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .si-sidebar-menu-item a:hover { background: #f1f5f9; }
+    [data-theme="dark"] .si-sidebar-menu-item a:hover { background: #1e1e2d; }
+    
+    .si-sidebar-menu-item.is-active a {
+        background: #ecfdf5;
+    }
+    [data-theme="dark"] .si-sidebar-menu-item.is-active a { background: #14321d; }
+    
+    .si-menu-icon {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f1f5f9;
+        border-radius: 10px;
+        font-size: 16px;
+        color: #64748b;
+        transition: all 0.2s;
+    }
+    [data-theme="dark"] .si-menu-icon { background: #1e1e2d; }
+    .si-sidebar-menu-item.is-active .si-menu-icon {
+        background: #29853A;
+        color: #fff;
+    }
+    .si-sidebar-menu-item a:hover .si-menu-icon { color: #29853A; }
+    
+    .si-menu-text {
+        flex: 1;
+        font-size: 14px;
+        font-weight: 600;
+        color: #334155;
+    }
+    [data-theme="dark"] .si-menu-text { color: #e2e8f0; }
+    .si-sidebar-menu-item.is-active .si-menu-text { color: #29853A; }
+    
+    .si-menu-badge {
+        padding: 4px 10px;
+        background: #29853A;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #fff;
+    }
+    
+    /* Logout */
+    .si-sidebar-menu-item.is-logout a:hover { background: #fef2f2; }
+    .si-sidebar-menu-item.is-logout .si-menu-icon { background: #fef2f2; color: #ef4444; }
+    .si-sidebar-menu-item.is-logout .si-menu-text { color: #ef4444; }
+    [data-theme="dark"] .si-sidebar-menu-item.is-logout a:hover { background: #3d1515; }
+    [data-theme="dark"] .si-sidebar-menu-item.is-logout .si-menu-icon { background: #3d1515; }
+    
+    /* Support Box */
+    .si-sidebar-support {
+        margin: 12px;
+        padding: 20px;
+        background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+        border: 1px solid #bbf7d0;
+        border-radius: 16px;
+        text-align: center;
+    }
+    [data-theme="dark"] .si-sidebar-support { background: #14321d; border-color: #166534; }
+    .si-support-icon {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 12px;
+        background: #29853A;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        color: #fff;
+    }
+    .si-sidebar-support h4 {
+        font-size: 14px;
+        font-weight: 700;
+        color: #166534;
+        margin: 0 0 4px;
+    }
+    [data-theme="dark"] .si-sidebar-support h4 { color: #4ade80; }
+    .si-sidebar-support p {
+        font-size: 12px;
+        color: #16a34a;
+        margin: 0 0 16px;
+    }
+    .si-support-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 16px;
+        background: #29853A;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .si-support-btn:hover { background: #1e6b2d; color: #fff; }
+    
+    /* Overlay */
+    .si-sidebar-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 998;
+    }
+    .si-sidebar-overlay.is-active { display: block; }
+    
+    /* ==========================================================================
+       CONTENT
+       ========================================================================== */
+    .si-account-content {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.04);
+    }
+    [data-theme="dark"] .si-account-content { background: #16161f; border-color: #252532; }
+    
+    /* ==========================================================================
+       DASHBOARD
+       ========================================================================== */
+    .si-welcome-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 24px;
+        background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+        border: 1px solid #bbf7d0;
+        border-radius: 16px;
+        margin-bottom: 24px;
+    }
+    [data-theme="dark"] .si-welcome-card { background: linear-gradient(135deg, #14321d 0%, #1a3a20 100%); border-color: #166534; }
+    .si-welcome-content h2 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #166534;
+        margin: 0 0 8px;
+    }
+    [data-theme="dark"] .si-welcome-content h2 { color: #4ade80; }
+    .si-welcome-content p {
+        font-size: 14px;
+        color: #16a34a;
+        margin: 0;
+        max-width: 500px;
+    }
+    .si-welcome-illustration {
+        font-size: 48px;
+        color: #22c55e;
+    }
+    
+    /* Stats Grid */
+    .si-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+    .si-stat-card {
+        position: relative;
+        padding: 20px;
+        background: #f8fafc;
+        border-radius: 16px;
+        overflow: hidden;
+    }
+    [data-theme="dark"] .si-stat-card { background: #1e1e2d; }
+    .si-stat-icon {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        font-size: 20px;
+        color: #fff;
+        margin-bottom: 12px;
+    }
+    .si-stat-orders .si-stat-icon { background: #3b82f6; }
+    .si-stat-spent .si-stat-icon { background: #10b981; }
+    .si-stat-tickets .si-stat-icon { background: #f59e0b; }
+    .si-stat-wishlist .si-stat-icon { background: #ef4444; }
+    
+    .si-stat-value {
+        display: block;
+        font-size: 24px;
+        font-weight: 800;
+        color: #1e293b;
+        margin-bottom: 4px;
+    }
+    [data-theme="dark"] .si-stat-value { color: #f1f5f9; }
+    .si-stat-label {
+        font-size: 13px;
+        color: #64748b;
+    }
+    .si-stat-link {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #29853A;
+        text-decoration: none;
+    }
+    .si-stat-link:hover { text-decoration: underline; }
+    
+    /* Quick Actions */
+    .si-section-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0 0 20px;
+    }
+    [data-theme="dark"] .si-section-title { color: #f1f5f9; }
+    .si-section-title i { color: #29853A; }
+    
+    .si-actions-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 12px;
+        margin-bottom: 32px;
+    }
+    .si-action-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 20px 12px;
+        background: #f8fafc;
+        border: 1px solid transparent;
+        border-radius: 14px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .si-action-item:hover {
+        border-color: var(--color);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    }
+    [data-theme="dark"] .si-action-item { background: #1e1e2d; }
+    .si-action-icon {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: color-mix(in srgb, var(--color) 15%, transparent);
+        border-radius: 12px;
+        font-size: 20px;
+        color: var(--color);
+    }
+    .si-action-item span {
+        font-size: 13px;
+        font-weight: 600;
+        color: #334155;
+        text-align: center;
+    }
+    [data-theme="dark"] .si-action-item span { color: #e2e8f0; }
+    
+    /* Section Header */
+    .si-section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+    .si-section-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        color: #29853A;
+        text-decoration: none;
+    }
+    .si-section-link:hover { text-decoration: underline; }
+    
+    /* Orders List */
+    .si-orders-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 32px;
+    }
+    .si-order-item {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px;
+        background: #f8fafc;
+        border-radius: 14px;
+        transition: all 0.2s;
+    }
+    .si-order-item:hover { background: #f1f5f9; }
+    [data-theme="dark"] .si-order-item { background: #1e1e2d; }
+    [data-theme="dark"] .si-order-item:hover { background: #252532; }
+    
+    .si-order-images { display: flex; }
+    .si-order-thumb {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 2px solid #fff;
+        margin-right: -8px;
+        background: #e2e8f0;
+    }
+    .si-order-thumb:first-child { margin-right: 0; }
+    .si-order-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .si-order-thumb.si-order-more {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+        color: #64748b;
+    }
+    
+    .si-order-info { flex: 1; }
+    .si-order-number {
+        display: block;
+        font-size: 14px;
+        font-weight: 700;
+        color: #1e293b;
+    }
+    [data-theme="dark"] .si-order-number { color: #f1f5f9; }
+    .si-order-date {
+        font-size: 12px;
+        color: #64748b;
+    }
+    
+    .si-order-meta {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 6px;
+    }
+    .si-order-status {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+    .si-status-pending { background: #fef3c7; color: #d97706; }
+    .si-status-processing { background: #dbeafe; color: #2563eb; }
+    .si-status-on-hold { background: #fef3c7; color: #d97706; }
+    .si-status-completed { background: #dcfce7; color: #16a34a; }
+    .si-status-cancelled { background: #fee2e2; color: #dc2626; }
+    .si-status-refunded { background: #f3e8ff; color: #9333ea; }
+    .si-status-failed { background: #fee2e2; color: #dc2626; }
+    .si-order-total {
+        font-size: 14px;
+        font-weight: 700;
+        color: #29853A;
+    }
+    
+    .si-order-view {
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        color: #64748b;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .si-order-view:hover { background: #29853A; border-color: #29853A; color: #fff; }
+    [data-theme="dark"] .si-order-view { background: #252532; border-color: #3d3d52; }
+    
+    /* Empty State */
+    .si-empty-state {
+        text-align: center;
+        padding: 48px 20px;
+    }
+    .si-empty-icon {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 20px;
+        background: #f1f5f9;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        color: #cbd5e1;
+    }
+    [data-theme="dark"] .si-empty-icon { background: #1e1e2d; }
+    .si-empty-state h4 {
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0 0 8px;
+    }
+    [data-theme="dark"] .si-empty-state h4 { color: #f1f5f9; }
+    .si-empty-state p {
+        font-size: 14px;
+        color: #64748b;
+        margin: 0 0 20px;
+    }
+    
+    .si-btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 24px;
+        background: #29853A;
+        border: none;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #fff;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .si-btn-primary:hover { background: #1e6b2d; color: #fff; }
+    
+    .si-btn-secondary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 24px;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #334155;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+    .si-btn-secondary:hover { background: #e2e8f0; }
+    
+    /* Address Cards */
+    .si-address-cards {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
+    .si-address-card {
+        padding: 20px;
+        background: #f8fafc;
+        border-radius: 14px;
+    }
+    [data-theme="dark"] .si-address-card { background: #1e1e2d; }
+    .si-address-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #1e293b;
+    }
+    [data-theme="dark"] .si-address-header { color: #f1f5f9; }
+    .si-address-icon {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #29853A;
+        border-radius: 10px;
+        color: #fff;
+    }
+    .si-address-body {
+        font-size: 13px;
+        line-height: 1.7;
+        color: #64748b;
+    }
+    .si-address-body address { font-style: normal; }
+    .si-no-address { color: #94a3b8; }
+    
+    /* ==========================================================================
+       TICKETS PAGE
+       ========================================================================== */
+    .si-tickets-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px;
+        background: #f8fafc;
+        border-radius: 14px;
+        margin-bottom: 24px;
+    }
+    [data-theme="dark"] .si-tickets-header { background: #1e1e2d; }
+    .si-tickets-header p {
+        font-size: 14px;
+        color: #64748b;
+        margin: 0;
+    }
+    
+    .si-new-ticket-form {
+        padding: 24px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        margin-bottom: 24px;
+    }
+    [data-theme="dark"] .si-new-ticket-form { background: #1e1e2d; border-color: #252532; }
+    .si-new-ticket-form h3 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0 0 20px;
+    }
+    [data-theme="dark"] .si-new-ticket-form h3 { color: #f1f5f9; }
+    .si-new-ticket-form h3 i { color: #29853A; }
+    
+    .si-form-row {
+        margin-bottom: 20px;
+    }
+    .si-form-row label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 8px;
+    }
+    [data-theme="dark"] .si-form-row label { color: #e2e8f0; }
+    .si-form-row label .required { color: #ef4444; }
+    
+    .si-form-row input[type="text"],
+    .si-form-row input[type="file"],
+    .si-form-row select,
+    .si-form-row textarea {
+        width: 100%;
+        padding: 14px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        font-family: inherit;
+        font-size: 14px;
+        color: #334155;
+        background: #fff;
+        transition: all 0.2s;
+    }
+    [data-theme="dark"] .si-form-row input,
+    [data-theme="dark"] .si-form-row select,
+    [data-theme="dark"] .si-form-row textarea {
+        background: #16161f;
+        border-color: #252532;
+        color: #e2e8f0;
+    }
+    .si-form-row input:focus,
+    .si-form-row select:focus,
+    .si-form-row textarea:focus {
+        outline: none;
+        border-color: #29853A;
+        box-shadow: 0 0 0 3px rgba(41,133,58,0.1);
+    }
+    .si-form-hint {
+        display: block;
+        font-size: 12px;
+        color: #94a3b8;
+        margin-top: 6px;
+    }
+    .si-form-actions {
+        display: flex;
+        gap: 12px;
+    }
+    
+    .si-tickets-list h3 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0 0 20px;
+    }
+    [data-theme="dark"] .si-tickets-list h3 { color: #f1f5f9; }
+    .si-tickets-list h3 i { color: #29853A; }
+    
+    /* ==========================================================================
+       ORDER TRACKING
+       ========================================================================== */
+    .si-order-tracking {
+        padding: 24px;
+        background: #f8fafc;
+        border-radius: 16px;
+        margin-bottom: 24px;
+    }
+    [data-theme="dark"] .si-order-tracking { background: #1e1e2d; }
+    .si-order-tracking h3 {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 18px;
+        font-weight: 700;
+        color: #1e293b;
+        margin: 0 0 24px;
+    }
+    [data-theme="dark"] .si-order-tracking h3 { color: #f1f5f9; }
+    .si-order-tracking h3 i { color: #29853A; }
+    
+    .si-tracking-steps {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+    }
+    .si-tracking-steps::before {
+        content: '';
+        position: absolute;
+        top: 24px;
+        left: 48px;
+        right: 48px;
+        height: 4px;
+        background: #e2e8f0;
+        border-radius: 2px;
+    }
+    [data-theme="dark"] .si-tracking-steps::before { background: #252532; }
+    
+    .si-tracking-step {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        flex: 1;
+    }
+    .si-step-icon {
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+        border: 3px solid #e2e8f0;
+        border-radius: 50%;
+        font-size: 18px;
+        color: #94a3b8;
+        margin-bottom: 12px;
+    }
+    [data-theme="dark"] .si-step-icon { background: #16161f; border-color: #252532; }
+    .si-tracking-step.is-done .si-step-icon {
+        background: #29853A;
+        border-color: #29853A;
+        color: #fff;
+    }
+    .si-tracking-step.is-current .si-step-icon {
+        border-color: #29853A;
+        color: #29853A;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { box-shadow: 0 0 0 0 rgba(41,133,58,0.4); }
+        50% { box-shadow: 0 0 0 8px transparent; }
+    }
+    .si-step-label {
+        font-size: 13px;
+        font-weight: 600;
+        color: #64748b;
+    }
+    .si-tracking-step.is-done .si-step-label,
+    .si-tracking-step.is-current .si-step-label { color: #29853A; }
+    
+    /* ==========================================================================
+       FORM STYLES (WooCommerce)
+       ========================================================================== */
+    .si-account-content label {
+        display: block;
+        font-size: 14px;
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 8px;
+    }
+    [data-theme="dark"] .si-account-content label { color: #e2e8f0; }
+    
+    .si-account-content input[type="text"],
+    .si-account-content input[type="email"],
+    .si-account-content input[type="tel"],
+    .si-account-content input[type="password"],
+    .si-account-content select,
+    .si-account-content textarea {
+        width: 100%;
+        padding: 14px 16px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        font-family: inherit;
+        font-size: 14px;
+        color: #334155;
+        background: #fff;
+    }
+    [data-theme="dark"] .si-account-content input,
+    [data-theme="dark"] .si-account-content select,
+    [data-theme="dark"] .si-account-content textarea {
+        background: #1e1e2d;
+        border-color: #252532;
+        color: #e2e8f0;
+    }
+    .si-account-content input:focus,
+    .si-account-content select:focus,
+    .si-account-content textarea:focus {
+        outline: none;
+        border-color: #29853A;
+    }
+    
+    .si-account-content button[type="submit"],
+    .si-account-content .button {
+        padding: 14px 24px;
+        background: #29853A;
+        border: none;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #fff;
+        cursor: pointer;
+    }
+    .si-account-content button[type="submit"]:hover,
+    .si-account-content .button:hover {
+        background: #1e6b2d;
+    }
+    
+    /* ==========================================================================
+       RESPONSIVE
+       ========================================================================== */
+    @media (max-width: 1200px) {
+        .si-stats-grid { grid-template-columns: repeat(2, 1fr); }
+        .si-actions-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    
+    @media (max-width: 991px) {
+        .si-account-layout { grid-template-columns: 1fr; }
+        .si-mobile-menu-toggle { display: flex; }
+        
+        .si-account-sidebar {
+            position: fixed;
+            top: 0;
+            right: -100%;
+            width: 320px;
+            height: 100%;
+            max-height: 100%;
+            z-index: 999;
+            border-radius: 0;
+            transition: right 0.3s ease;
+            overflow-y: auto;
+        }
+        .si-account-sidebar.is-active { right: 0; }
+        .si-sidebar-close { display: flex; }
+        
+        .si-address-cards { grid-template-columns: 1fr; }
+    }
+    
+    @media (max-width: 768px) {
+        .si-account-header { padding: 30px 0; }
+        .si-account-header-content { flex-direction: column; text-align: center; }
+        .si-account-header-title { justify-content: center; font-size: 22px; }
+        .si-account-header-actions { justify-content: center; }
+        
+        .si-account-content { padding: 20px; }
+        .si-welcome-card { flex-direction: column; text-align: center; }
+        .si-welcome-illustration { display: none; }
+        
+        .si-stats-grid { grid-template-columns: 1fr 1fr; }
+        .si-actions-grid { grid-template-columns: repeat(2, 1fr); }
+        
+        .si-order-item { flex-wrap: wrap; }
+        .si-order-view { width: 100%; margin-top: 12px; }
+        
+        .si-tracking-steps { flex-direction: column; gap: 20px; }
+        .si-tracking-steps::before {
+            top: 0; bottom: 0;
+            left: 24px; right: auto;
+            width: 4px; height: auto;
+        }
+        .si-tracking-step { flex-direction: row; gap: 16px; text-align: right; }
+        .si-step-icon { margin-bottom: 0; }
+    }
+    
+    @media (max-width: 480px) {
+        .si-stats-grid { grid-template-columns: 1fr; }
+        .si-actions-grid { grid-template-columns: 1fr 1fr; }
+        .si-account-sidebar { width: 100%; }
+        .si-tickets-header { flex-direction: column; gap: 16px; text-align: center; }
+        .si-form-actions { flex-direction: column; }
+    }
+    </style>
+    <?php
+}, 99 );
+
+/**
+ * =============================================================================
+ * JAVASCRIPT
+ * =============================================================================
+ */
+add_action( 'wp_footer', function() {
+    if ( ! si_is_account_page() ) return;
+    ?>
+    <script id="si-account-js">
+    (function() {
+        'use strict';
+        
+        var sidebar = document.getElementById('si-account-sidebar');
+        var overlay = document.getElementById('si-sidebar-overlay');
+        var toggleBtn = document.getElementById('si-mobile-menu-toggle');
+        var closeBtn = document.getElementById('si-sidebar-close');
+        
+        function openSidebar() {
+            if (sidebar) sidebar.classList.add('is-active');
+            if (overlay) overlay.classList.add('is-active');
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function closeSidebar() {
+            if (sidebar) sidebar.classList.remove('is-active');
+            if (overlay) overlay.classList.remove('is-active');
+            document.body.style.overflow = '';
+        }
+        
+        if (toggleBtn) toggleBtn.addEventListener('click', openSidebar);
+        if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+        if (overlay) overlay.addEventListener('click', closeSidebar);
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeSidebar();
+        });
+    })();
+    </script>
+    <?php
+}, 99 );
+
+/**
+ * Flush rewrite rules on theme switch
+ */
+add_action( 'after_switch_theme', 'flush_rewrite_rules' );
